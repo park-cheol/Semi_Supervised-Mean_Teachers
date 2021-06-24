@@ -7,3 +7,14 @@ https://github.com/shunk031/chainer-MeanTeachers/blob/master/models/resnet.py
 https://github.com/CuriousAI/mean-teacher/tree/master/pytorch/mean_teacher                  
 https://nuguziii.github.io/paper-review/PR-009/                     
 
+pi model, temporal ensembling
+:https://arxiv.org/pdf/1610.02242
+
+cosine annealing paper
+:https://arxiv.org/abs/1608.03983
+
+shake net paper
+:https://arxiv.org/pdf/1705.07485
+
+code:
+https://github.com/iSarmad/MeanTeacher-SNTG-HybridNet
