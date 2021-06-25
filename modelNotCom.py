@@ -108,7 +108,3 @@ class ShakeShakeBlock(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
-
-
-class ResNet32x32(nn.Module):
-    def __init__(self, blo):

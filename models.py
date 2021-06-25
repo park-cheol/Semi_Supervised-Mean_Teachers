@@ -34,7 +34,7 @@ class Net(nn.Module):
         self.args = args
         self.std = std
 
-        self.gn = GassianNoise(shape=(args.batch_size, 3, 32, 32), std=self.std)
+        self.gn = GassianNoise(args, shape=(args.batch_size, 3, 32, 32), std=self.std)
 
         # 1,2,3 = pooling전까지 block? , a, b, c = block안에서 순서
         if self.args.BN: # batch norm 사용여부
@@ -50,7 +50,7 @@ class Net(nn.Module):
             self.BN3b = nn.BatchNorm2d(256)
             self.BN3c = nn.BatchNorm2d(128)
 
-            self.BNdense = nn.BatchNorm2d(10)
+            self.BNdense = nn.BatchNorm1d(10)
 
         self.conv1a = nn.Conv2d(3, 128, 3, padding=1)
         self.conv1b = nn.Conv2d(128, 128, 3, padding=1)

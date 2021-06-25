@@ -89,7 +89,7 @@ def relabel_dataset(dataset, labels):
             del labels[filename]
 
         else:
-            dataset.img[idx] = path, NO_LABEL
+            dataset.imgs[idx] = path, NO_LABEL
             unlabeled_idxs.append(idx)
 
     # for 문을 다 돌고 labels의 dict에 아무것도 없어야함 있을 시 에러 처리

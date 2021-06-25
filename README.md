@@ -18,3 +18,7 @@ shake net paper
 
 code:
 https://github.com/iSarmad/MeanTeacher-SNTG-HybridNet
+
+사용 된 기법들:
+https://arxiv.org/abs/1706.02677                    
+https://arxiv.org/abs/1608.03983                    

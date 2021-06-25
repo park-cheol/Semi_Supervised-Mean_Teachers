@@ -12,7 +12,7 @@ from torch.autograd import Variable
 # rampup_length [0, 1]사이의 값
 # consistency loss와 learning rate에 사용
 # We applied a ramp-up period of 40000 training steps at the beginning of training
-def sigmoid_rampup(current, rampup_length):
+def sigmoid_rampup(current, rampup_length): # current: epoch
     if rampup_length == 0:
         return 1.0
     else:
@@ -22,7 +22,7 @@ def sigmoid_rampup(current, rampup_length):
 
         return float(np.exp(-5.0 * phase * phase))
 
-def linear_rampup(current, rampup_length):
+def linear_rampup(current, rampup_length): # current: epoch
     assert current >= 0 and rampup_length >= 0
     if current >= rampup_length:
         return 1.0
@@ -72,10 +72,10 @@ def parameters_string(module):
     lines.append("")
     return "\n".join(lines)
 
-
-def assert_exactly_one(lst):
-    assert sum(int(bool(el)) for el in lst) == 1, ", ".join(str(el)
-                                                            for el in lst)
+# 필요 없을 것 같으므로 제외
+# def assert_exactly_one(lst):
+#     assert sum(int(bool(el)) for el in lst) == 1, ", ".join(str(el)
+#                                                             for el in lst)
 
 
 class AverageMeterSet:
@@ -126,7 +126,7 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
     def __format__(self, format):
-        return "{self.val:{format}} ({self.avg:{format}})".format(self=self, format=format)
+        return "{self.val:{format}}".format(self=self, format=format)
 
 
 def export(fn):
@@ -140,7 +140,6 @@ def export(fn):
 
 def parameter_count(module):
     return sum(int(param.numel()) for param in module.parameters())
-
 
 
 
