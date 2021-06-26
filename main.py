@@ -126,8 +126,11 @@ def main_worker(gpu, ngpus_per_node, args):
 
     checkpoint_path = "saved_models/{}".format(args.dataset)
 
-    model = Net(args)
-    ema_model = Net(args)
+    # model = Net(args)
+    # ema_model = Net(args)
+    model = ResNet(BottleneckBlock, layers=[4, 4, 4], channels=128, downsample='basic')
+    ema_model = ResNet(BottleneckBlock, layers=[4, 4, 4], channels=128, downsample='basic')
+
 
     # teachers model은 학습하는게 아니라 student model에서 weight를 ema해줌
     for param in ema_model.parameters():
@@ -151,10 +154,14 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # optim / loss
     # todo paper에서 adam이라고 되어있음
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay,
-                                nesterov=args.nesterov)
+    optimizer = torch.optim.Adam(model.parameters(),
+                                args.lr,
+                                betas=(0.9, 0.999))
+
+    # optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    #                             momentum=args.momentum,
+    #                             weight_decay=args.weight_decay,
+    #                             nesterov=args.nesterov)
 
     class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).cuda()
     # ignore_index: 특정 라벨을 mask할 때 사용
@@ -220,7 +227,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # 평가
     if args.evaluate:
-        print('Evaluating the primary model')
+        print('Evaluating the student model')
         validate(eval_loader, model, class_criterion, args)
         print('Evaluating the Teacher model')
         validate(eval_loader, ema_model, class_criterion, args)

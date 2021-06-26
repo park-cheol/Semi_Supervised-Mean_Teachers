@@ -123,7 +123,108 @@ class Net(nn.Module):
 
         return dense
 
-# print 한번찍어보기
+###################################
+# RESNET Model
+###################################
+# todo resnet 좀더 자세히
+
+class BottleneckBlock(nn.Module):
+    @classmethod
+    def out_channels(cls, channels, groups): # todo out_channels?
+        if groups > 1:
+            return 2 * channels
+        else:
+            return 4 * channels
+
+    def __init__(self, in_channels, out_channels, groups, stride=1, downsample=None):
+        super(BottleneckBlock, self).__init__()
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+
+        self.conv_1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self.bn_1 = nn.BatchNorm2d(out_channels)
+
+        self.conv_2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False, groups=groups)
+        self.bn_2 = nn.BatchNorm2d(out_channels)
+
+        self.conv_3 = nn.Conv2d(out_channels, self.out_channels(out_channels, groups), kernel_size=1, bias=False)
+        self.bn_3 = nn.BatchNorm2d(self.out_channels(out_channels, groups))
+
+    def forward(self, input):
+        conv_1 = self.conv_1(input)
+        bn_1 = self.bn_1(conv_1)
+        relu_1 = self.relu(bn_1)
+
+        conv_2 = self.conv_2(relu_1)
+        bn_2 = self.bn_2(conv_2)
+        relu_2 = self.relu(bn_2)
+
+        conv_3 = self.conv_3(relu_2)
+        bn_3 = self.bn_3(conv_3)
+
+        if self.downsample is not None:
+            input = self.downsample(input)
+
+        return self.relu(input + bn_3)
+
+# LAYERS[4, 4, 4] , channels=96, downsample='basic', **kwargs)
+class ResNet(nn.Module):
+
+    def __init__(self, block, layers, channels, groups=1, num_classes=10, downsample='basic'):
+        super(ResNet, self).__init__()
+        assert len(layers) == 3
+        self.downsample_mode = downsample
+        self.in_channels = 16
+
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
+
+        self.layer1 = self._make_layer(block, channels, groups, layers[0])
+        self.layer2 = self._make_layer(block, channels * 2, groups, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, channels * 4, groups, layers[2], stride=2)
+
+        self.avgpool = nn.AvgPool2d(8) # todo out_channels 어떻게 찍히는가
+        self.fc1 = nn.Linear(block.out_channels(channels * 4, groups), num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def _make_layer(self, block, out_channels, groups, blocks, stride=1):
+        if stride != 1 or self.in_channels != block.out_channels(out_channels, groups):
+            downsample = nn.Sequential(
+                nn.Conv2d(self.in_channels, block.out_channels(out_channels, groups), kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(block.out_channels(out_channels, groups))
+            )
+
+        else:
+            assert False
+
+        layers = []
+        layers.append(block(self.in_channels, out_channels, groups, stride, downsample))
+        self.in_channels = block.out_channels(out_channels, groups)
+
+        for i in range(1, blocks):
+            layers.append(block(self.in_channels, out_channels, groups))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, input):
+        conv1 = self.conv1(input)
+        layer1 = self.layer1(conv1)
+        layer2 = self.layer2(layer1)
+        layer3 = self.layer3(layer2)
+        avgpool = self.avgpool(layer3)
+        reshaped = avgpool.view(input.size(0), -1)
+        output = self.fc1(reshaped)
+
+        return output
+
+
 
 
 
