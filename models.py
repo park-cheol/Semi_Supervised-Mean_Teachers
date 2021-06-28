@@ -19,10 +19,10 @@ class GassianNoise(nn.Module):
         self.register_buffer('noise2', self.noise1)
 
     def forward(self, input):
-        c = input.shape[0] # !todo channel? batch?
+        c = input.shape[0] # batch size
         self.noise2.data.data.normal_(0, std=self.std1)
 
-        return input + self.noise2[:c] # todo print shape
+        return input + self.noise2[:c] # [batch, 3, 32, 32] 초기 채널3
 ################
 # model
 ################
@@ -97,7 +97,7 @@ class Net(nn.Module):
             layer_3a = F.leaky_relu(self.BN3a(self.conv3a(drop_pool_2)), negative_slope=0.1)  # self.BN3a
             layer_3b = F.leaky_relu(self.BN3b(self.conv3b(layer_3a)), negative_slope=0.1)  # self.BN3b
             layer_3c = F.leaky_relu(self.BN3c(self.conv3c(layer_3b)), negative_slope=0.1)  # self.BN3c
-            pool_3 = self.pool3(layer_3c)
+            pool_3 = self.pool3(layer_3c) # [batch, 128, 1, 1]
 
             reshaped = pool_3.view(-1, 128)
             dense = self.BNdense(self.dense(reshaped))
@@ -121,7 +121,12 @@ class Net(nn.Module):
             reshaped = pool_3.view(-1, 128)
             dense = self.dense(reshaped)
 
-        return dense
+        return dense # [128, 10]
+
+
+
+
+
 
 ###################################
 # RESNET Model

@@ -12,6 +12,7 @@ from torch.autograd import Variable
 # rampup_length [0, 1]사이의 값
 # consistency loss와 learning rate에 사용
 # We applied a ramp-up period of 40000 training steps at the beginning of training
+# rampup: 갑작스러운 증가는 학습에 안좋으므로 rampup_lenght(epoch)까지 return같은 식으로 점점 증가시킴
 def sigmoid_rampup(current, rampup_length): # current: epoch
     if rampup_length == 0:
         return 1.0
@@ -29,8 +30,8 @@ def linear_rampup(current, rampup_length): # current: epoch
     else:
         return current / rampup_length
 
-# todo cosine annealing paper 읽기
 # decay learning rate할때 사용 (resnet 구조)
+# learning rate(cosine annealing): SGDR
 def cosine_rampdown(current, rampdown_length):
     assert 0 <= current <= rampdown_length
 
@@ -41,12 +42,13 @@ def cosine_rampdown(current, rampdown_length):
 학습율의 max, min value을 정해서 그 범위의 학습율에 cosine function을 이용하여 scheduling
 장점: cosine을 이용하여 급격히 증가시켰다가 급격히 감소시키기 때문에 모델의 manifold 공간의 안장에 빠르게
 벗어 날 수 있고, 또한 학습 중간에 생기는 정체 구간들을 빠르게 벗어날 수 있다.
+하지만 여기서는 그저 learning rate decay 공식으로만 그대로 사용한 것 같다
 """
 
 
 
 ###############################
-# todo 좀더 조사
+# todo ImageNet pytorch Example 확인
 ###############################
 def parameters_string(module):
     lines = [

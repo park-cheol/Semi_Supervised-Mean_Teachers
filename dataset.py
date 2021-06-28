@@ -2,7 +2,7 @@ import itertools
 import os
 import numpy as np
 from PIL import Image
-
+import matplotlib.pyplot as plt
 from torch.utils.data.sampler import Sampler
 
 NO_LABEL = -1
@@ -22,25 +22,24 @@ class RandomTranslateWithReflect:
                                                        self.max_translation + 1,
                                                        size=2)
         xpad, ypad = abs(xtranslation), abs(ytranslation)
-        xsize, ysize = old_image.size # todo print this(width height?)
+        xsize, ysize = old_image.size # 32, 32
 
-        # todo imshow로 한번 직접 확인
-        flipped_lr = old_image.transpose(Image.FLIP_LEFT_RIGHT)
-        flipped_tb = old_image.transpose(Image.FLIP_TOP_BOTTOM)
-        flipped_both = old_image.transpose(Image.ROTATE_180)
+
+        flipped_lr = old_image.transpose(Image.FLIP_LEFT_RIGHT) # 좌 우
+        flipped_tb = old_image.transpose(Image.FLIP_TOP_BOTTOM) # 위아래
+        flipped_both = old_image.transpose(Image.ROTATE_180) # 둘다 plt로 확인해봄
 
         # 옆, 위아래니까 * 2
-        new_image = Image.new("RGB", (xsize + 2 * xpad, ysize + 2 * ypad))
+        new_image = Image.new("RGB", (xsize + 2 * xpad, ysize + 2 * ypad)) # 현재는 그저 검은 화면
         # Image.new(mode, size): 주어진 형식의 새로운 이미지를 생성
 
-        # todo 이렇게 new_image에 여려개를 paste하면 어떻게 되는지 찍어보기
-        new_image.paste(old_image, (xpad, ypad))
+        new_image.paste(old_image, (xpad, ypad)) # xpad ,ypad 랜덤으로 원본그림 크기 복사
 
         new_image.paste(flipped_lr, (xpad + xsize - 1, ypad))
-        new_image.paste(flipped_lr, (xpad - xsize + 1, ypad))
+        new_image.paste(flipped_lr, (xpad - xsize + 1, ypad)) # 위 아래만 검은색
 
-        new_image.paste(flipped_tb, (xpad, ypad + ysize - 1))
-        new_image.paste(flipped_tb, (xpad, ypad - ysize + 1))
+        new_image.paste(flipped_tb, (xpad, ypad + ysize - 1)) # 위 전부 아래 양옆모서리 검은색
+        new_image.paste(flipped_tb, (xpad, ypad - ysize + 1)) # 위 아래 양 옆모서리 검은색
 
         new_image.paste(flipped_both, (xpad - xsize + 1, ypad - ysize + 1))
         new_image.paste(flipped_both, (xpad + xsize - 1, ypad - ysize + 1))
@@ -76,7 +75,7 @@ class TransformTwice:
 def relabel_dataset(dataset, labels):
     unlabeled_idxs = []
     for idx in range(len(dataset.imgs)):
-        path, _ = dataset.imgs[idx] # todo dataset은 torchvision Imagefolder인데 .imgs따로 있는지
+        path, _ = dataset.imgs[idx] # dataset은 torchvision Imagefolder인데 .imgs따로 있음 이미지 불러오기
         filename = os.path.basename(path)
         # os.path.abspath(path)와 상반: abspath는 절대경로로 home/jun2/....식으로 반환
         # os.path.basename(path): 입력받은 경로의 기본 이름을 반환 즉 "path"만
@@ -103,7 +102,8 @@ def relabel_dataset(dataset, labels):
     # 즉 집합-집합으로 총 dataset 이미지 중에서 unlabeled 된 것을 제외
     return labeled_idxs, unlabeled_idxs # 둘 다 type: list
 
-# todo ?? 무엇인지 파악
+# 총 batch(ex.256)에서 labeled data(64)를 무적권 넣는 것
+# 즉 불러올 데이터에 labeled data를 넣기 위한 작업
 class TwoStreamBatchSampler(Sampler):
     """Iterate two sets of indices
     An 'epoch' is one iteration through the primary indices.
@@ -119,12 +119,12 @@ class TwoStreamBatchSampler(Sampler):
 
         assert len(self.primary_indices) >= self.primary_batch_size > 0
         assert len(self.secondary_indices) >= self.secondary_batch_size > 0
-        # todo image사진보다 batch가 크면 안되다는것??
+
 
     def __iter__(self):
-        # todo primary와 secondary의 permutation차이를 두는 이유
-        primary_iter = iterate_once(self.primary_indices)
-        secondary_iter = iterate_eternally(self.secondary_indices)
+
+        primary_iter = iterate_once(self.primary_indices) # unlabeled iteration 마다 한번
+        secondary_iter = iterate_eternally(self.secondary_indices) # 계속
 
         return (
             primary_batch + secondary_batch

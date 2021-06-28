@@ -126,10 +126,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     checkpoint_path = "saved_models/{}".format(args.dataset)
 
-    # model = Net(args)
-    # ema_model = Net(args)
-    model = ResNet(BottleneckBlock, layers=[4, 4, 4], channels=128, downsample='basic')
-    ema_model = ResNet(BottleneckBlock, layers=[4, 4, 4], channels=128, downsample='basic')
+    model = Net(args)
+    ema_model = Net(args)
+    # model = ResNet(BottleneckBlock, layers=[4, 4, 4], channels=128, downsample='basic')
+    # ema_model = ResNet(BottleneckBlock, layers=[4, 4, 4], channels=128, downsample='basic')
 
 
     # teachers model은 학습하는게 아니라 student model에서 weight를 ema해줌
@@ -153,7 +153,7 @@ def main_worker(gpu, ngpus_per_node, args):
         ema_model = nn.DataParallel(ema_model).cuda(args.gpu)
 
     # optim / loss
-    # todo paper에서 adam이라고 되어있음
+    # paper에서 adam이라고 되어있음 ==> 확실히 Adam이 좀더 높게 나옴
     optimizer = torch.optim.Adam(model.parameters(),
                                 args.lr,
                                 betas=(0.9, 0.999))
@@ -267,6 +267,8 @@ def main_worker(gpu, ngpus_per_node, args):
             }, is_best, checkpoint_path, epoch + 1)
 
     print("총 시간:", datetime.timedelta(seconds=time.time() - total_start_time))
+
+
 def train(train_loader, epoch,model, ema_model, criterion, optimizer, args):
     global global_step
 
@@ -285,9 +287,9 @@ def train(train_loader, epoch,model, ema_model, criterion, optimizer, args):
 
     end = time.time()
 
-    # todo (input, ema_input)??
     for i, ((input, ema_input), target) in enumerate(train_loader):
         # measure data loading time
+        # target: train_loader 자체에서 폴더 수로 class를 분류 해주는 것 같다.(그걸 one-hot vecotr 바꿔줌)
         meters.update('data_time', time.time() - end)
 
         adjust_learning_rate(optimizer, epoch, i, len(train_loader), args)
@@ -355,7 +357,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
     # paper: alpha는 0에서 시간이 지날수록 점점 증가하는 방법(ramp up)
     # 이러한 방법이 student를 더욱빠르게 초기에 학습
     for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-        # todo data
+        # EMA undata 하는 과정
         ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
         # Tensor.add_(a,b) ==> Tensor + (a*b)
 
@@ -409,7 +411,7 @@ def validate(eval_loader, model, criterion, args):
             input_var = images.cuda(args.gpu, non_blocking=True)
             target_var = target.cuda(args.gpu, non_blocking=True)
             minibatch_size = len(target_var)
-            # todo data? item?
+
             labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum()
             assert labeled_minibatch_size > 0
             # torch.ne(input, other): input != other 인 것을 True로 반환, 요소들이 같은 경우 False
