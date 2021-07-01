@@ -1,0 +1,130 @@
+absl-py @ file:///tmp/build/80754af9/absl-py_1615411197583/work
+aiohttp @ file:///tmp/build/80754af9/aiohttp_1602530275854/work
+astor==0.8.1
+astunparse==1.6.3
+async-timeout==3.0.1
+attrs @ file:///tmp/build/80754af9/attrs_1604765588209/work
+backcall @ file:///home/ktietz/src/ci/backcall_1611930011877/work
+blinker==1.4
+blis==0.7.4
+brotlipy==0.7.0
+cached-property==1.5.2
+cachetools @ file:///tmp/build/80754af9/cachetools_1611600262290/work
+catalogue==2.0.4
+certifi==2020.12.5
+cffi @ file:///tmp/build/80754af9/cffi_1613246439577/work
+chardet==4.0.0
+click @ file:///home/linux1/recipes/ci/click_1610990599742/work
+cloudpickle==1.6.0
+contextvars==2.4
+coverage @ file:///tmp/build/80754af9/coverage_1614614208500/work
+cryptography @ file:///tmp/build/80754af9/cryptography_1616769282133/work
+cycler==0.10.0
+cymem==2.0.5
+Cython @ file:///tmp/build/80754af9/cython_1614014843172/work
+dataclasses @ file:///tmp/build/80754af9/dataclasses_1614363715916/work
+de-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.0.0/de_core_news_sm-3.0.0-py3-none-any.whl
+decorator @ file:///home/ktietz/src/ci/decorator_1611930055503/work
+dominate==2.4.0
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+future==0.18.2
+gast==0.3.3
+google-auth @ file:///tmp/build/80754af9/google-auth_1616008050444/work
+google-auth-oauthlib @ file:///tmp/build/80754af9/google-auth-oauthlib_1617120569401/work
+google-pasta==0.2.0
+grpcio @ file:///tmp/build/80754af9/grpcio_1614884176509/work
+gym==0.18.0
+h5py==3.1.0
+idna @ file:///home/linux1/recipes/ci/idna_1610986105248/work
+idna-ssl @ file:///tmp/build/80754af9/idna_ssl_1611752490495/work
+immutables==0.15
+importlib-metadata @ file:///tmp/build/80754af9/importlib-metadata_1615900331119/work
+ipython @ file:///tmp/build/80754af9/ipython_1593447367857/work
+ipython-genutils @ file:///tmp/build/80754af9/ipython_genutils_1606773439826/work
+jedi==0.17.0
+Jinja2==3.0.1
+joblib @ file:///tmp/build/80754af9/joblib_1613502643832/work
+jsonpatch==1.32
+jsonpointer==2.1
+Keras @ file:///tmp/build/80754af9/keras_split_1593112142734/work
+Keras-Applications==1.0.8
+Keras-Preprocessing @ file:///tmp/build/80754af9/keras-preprocessing_1612283640596/work
+kiwisolver @ file:///tmp/build/80754af9/kiwisolver_1612282412546/work
+Markdown @ file:///tmp/build/80754af9/markdown_1614363833670/work
+MarkupSafe==2.0.1
+matplotlib @ file:///tmp/build/80754af9/matplotlib-suite_1613407855456/work
+mkl-fft==1.3.0
+mkl-random==1.1.1
+mkl-service==2.3.0
+mrcnn==0.2
+multidict @ file:///tmp/build/80754af9/multidict_1600456401639/work
+murmurhash==1.0.5
+numpy @ file:///tmp/build/80754af9/numpy_and_numpy_base_1603487797006/work
+oauthlib==3.1.0
+olefile==0.46
+opencv-contrib-python==4.5.1.48
+opt-einsum==3.3.0
+packaging==20.9
+pandas @ file:///tmp/build/80754af9/pandas_1602088135163/work
+parso @ file:///tmp/build/80754af9/parso_1607623074025/work
+pathy==0.5.2
+pexpect @ file:///tmp/build/80754af9/pexpect_1605563209008/work
+pickleshare @ file:///tmp/build/80754af9/pickleshare_1606932040724/work
+Pillow @ file:///tmp/build/80754af9/pillow_1615224027575/work
+preshed==3.0.5
+prompt-toolkit @ file:///tmp/build/80754af9/prompt-toolkit_1602688806899/work
+protobuf==3.15.5
+ptyprocess @ file:///tmp/build/80754af9/ptyprocess_1609355006118/work/dist/ptyprocess-0.7.0-py2.py3-none-any.whl
+pyasn1==0.4.8
+pyasn1-modules==0.2.8
+pycparser @ file:///tmp/build/80754af9/pycparser_1594388511720/work
+pydantic==1.7.4
+pyglet==1.5.0
+Pygments @ file:///tmp/build/80754af9/pygments_1613849567472/work
+PyJWT==1.7.1
+pyOpenSSL @ file:///tmp/build/80754af9/pyopenssl_1608057966937/work
+pyparsing @ file:///home/linux1/recipes/ci/pyparsing_1610983426697/work
+PySocks @ file:///tmp/build/80754af9/pysocks_1605305763431/work
+python-dateutil @ file:///home/ktietz/src/ci/python-dateutil_1611928101742/work
+pytz @ file:///tmp/build/80754af9/pytz_1612215392582/work
+PyYAML==5.4.1
+pyzmq==22.0.3
+readchar==3.0.3
+requests @ file:///tmp/build/80754af9/requests_1608241421344/work
+requests-oauthlib==1.3.0
+rsa @ file:///tmp/build/80754af9/rsa_1614366226499/work
+scikit-learn @ file:///tmp/build/80754af9/scikit-learn_1614446678517/work
+scipy==1.5.4
+selenium==3.141.0
+six @ file:///tmp/build/80754af9/six_1605205335545/work
+smart-open==3.0.0
+spacy==3.0.6
+spacy-legacy==3.0.5
+srsly==2.4.1
+tensorboard @ file:///home/builder/ktietz/aggregate/tensorflow_recipes/ci_te/tensorboard_1614593728657/work/tmp_pip_dir
+tensorboard-plugin-wit==1.6.0
+tensorboardX==2.1
+tensorflow==2.2.0
+tensorflow-estimator==2.2.0
+tensorflow-gpu==2.0.0
+termcolor==1.1.0
+thinc==8.0.3
+threadpoolctl @ file:///tmp/tmp9twdgx9k/threadpoolctl-2.1.0-py3-none-any.whl
+torch==1.8.1
+torchfile==0.1.0
+torchtext==0.9.1
+torchvision==0.9.1
+tornado @ file:///tmp/build/80754af9/tornado_1606942266872/work
+tqdm==4.60.0
+traitlets==4.3.3
+typer==0.3.2
+typing-extensions @ file:///home/ktietz/src/ci_mi/typing_extensions_1612808209620/work
+urllib3 @ file:///tmp/build/80754af9/urllib3_1615837158687/work
+visdom==0.1.8.9
+wasabi==0.8.2
+wcwidth @ file:///tmp/build/80754af9/wcwidth_1593447189090/work
+websocket-client==0.58.0
+Werkzeug @ file:///home/ktietz/src/ci/werkzeug_1611932622770/work
+wrapt==1.12.1
+yarl @ file:///tmp/build/80754af9/yarl_1606939915466/work
+zipp @ file:///tmp/build/80754af9/zipp_1615904174917/work

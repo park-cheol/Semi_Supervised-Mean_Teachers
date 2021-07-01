@@ -1,3 +1,7 @@
+"""본 파일은 Supervised data classification 일때 accuracy보기 위함
+즉, model convnet accuracy 측정하기위해서
+"""
+
 import argparse
 import warnings
 import os
@@ -128,14 +132,14 @@ def main_worker(gpu, ngpus_per_node, args):
     checkpoint_path = "saved_models/{}".format(args.dataset)
 
     model = Net(args)
-    ema_model = Net(args)
+    # ema_model = Net(args)
     # model = ResNet(Bottleneck, [3, 4, 6, 3])
-    # ema_model = ResNet(Bottleneck, [3, 4, 6, 3])
+    # ema_model = ResNet(BottleneckBlock, layers=[4, 4, 4], channels=128, downsample='basic')
 
 
     # teachers model은 학습하는게 아니라 student model에서 weight를 ema해줌
-    for param in ema_model.parameters():
-        param.detach_()
+    #for param in ema_model.parameters():
+    #    param.detach_()
 
     # CUDA or 환경세팅 or 초기화
     if args.gpu is not None:
@@ -147,11 +151,11 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
-        ema_model = ema_model.cuda(args.gpu)
+        # ema_model = ema_model.cuda(args.gpu)
     else:
         # DataParallel은 사용가능한 gpu에다가 batchsize을 나누고 할당
         model = nn.DataParallel(model).cuda(args.gpu)
-        ema_model = nn.DataParallel(ema_model).cuda(args.gpu)
+        # ema_model = nn.DataParallel(ema_model).cuda(args.gpu)
 
     # optim / loss
     # paper에서 adam이라고 되어있음 ==> 확실히 Adam이 좀더 높게 나옴
@@ -176,7 +180,7 @@ def main_worker(gpu, ngpus_per_node, args):
         global_step = checkpoint['global_step']
         best_prec1 = checkpoint['best_prec1']
         model.load_state_dict(checkpoint['state_dict'])
-        ema_model.load_state_dict(checkpoint['ema_state_dict'])
+        # ema_model.load_state_dict(checkpoint['ema_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         print("loaded checkpoint epoch:", checkpoint['epoch'])
 
@@ -184,11 +188,11 @@ def main_worker(gpu, ngpus_per_node, args):
     # 내장된 cudnn 자동 튜너 활성화, 하드웨어에 맞게 최상의 알고리즘 찾음, 같은 이미지 크기만 들어오실 좋음
 
     # transform 이미지 불러오기
-    train_transform = TransformTwice(transforms.Compose([
+    train_transform = transforms.Compose([
         RandomTranslateWithReflect(4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))]))
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])
 
     eval_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -199,22 +203,23 @@ def main_worker(gpu, ngpus_per_node, args):
     eval_dataset = torchvision.datasets.ImageFolder(evaldir, eval_transform)
     test_dataset = torchvision.datasets.ImageFolder(testdir, eval_transform)
 
-    if args.labels:
-        with open(args.labels) as f:
-            labels = dict(line.split(' ') for line in f.read().splitlines())
-            # labels 분리 label text 확인
-        labeled_idxs, unlabeled_idxs = relabel_dataset(train_dataset, labels)
+    # if args.labels:
+    #    with open(args.labels) as f:
+    #        labels = dict(line.split(' ') for line in f.read().splitlines())
+    #        # labels 분리 label text 확인
+    #    labeled_idxs, unlabeled_idxs = relabel_dataset(train_dataset, labels)
 
-    if args.labeled_batch_size:
-        batch_sampler = TwoStreamBatchSampler(
-            unlabeled_idxs, labeled_idxs, args.batch_size, args.labeled_batch_size
-        )
+    # # if args.labeled_batch_size:
+    #     batch_sampler = TwoStreamBatchSampler(
+    #         unlabeled_idxs, labeled_idxs, args.batch_size, args.labeled_batch_size
+    #     )
 
-    else:
-        assert False, "labeled batch size {}".format(args.labeled_batch_size)
+    # else:
+    #    assert False, "labeled batch size {}".format(args.labeled_batch_size)
 
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_sampler=batch_sampler,
+                                               batch_size=args.batch_size,
+                                               shuffle=True,
                                                num_workers=args.workers,
                                                pin_memory=True)
 
@@ -230,8 +235,8 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.evaluate:
         print('Evaluating the student model')
         validate(eval_loader, model, class_criterion, args)
-        print('Evaluating the Teacher model')
-        validate(eval_loader, ema_model, class_criterion, args)
+        # print('Evaluating the Teacher model')
+        # validate(eval_loader, ema_model, class_criterion, args)
 
         return
 
@@ -240,7 +245,7 @@ def main_worker(gpu, ngpus_per_node, args):
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
 
-        train(train_loader, epoch, model, ema_model, class_criterion, optimizer, args)
+        train(train_loader, epoch, model, class_criterion, optimizer, args)
 
         print("---epoch time:", datetime.timedelta(seconds=time.time() - start_time))
 
@@ -248,13 +253,13 @@ def main_worker(gpu, ngpus_per_node, args):
             start_time = time.time()
             print("<Evaluating the student model>")
             acc1 = validate(eval_loader, model, class_criterion, args)
-            print("<Evaluating the Teacher model>")
-            ema_acc1 = validate(eval_loader, ema_model, class_criterion, args)
+            # print("<Evaluating the Teacher model>")
+            # ema_acc1 = validate(eval_loader, ema_model, class_criterion, args)
 
             print("---val time:", datetime.timedelta(seconds=time.time() - start_time))
             # 최고 모델 저장
-            is_best = ema_acc1 > best_prec1
-            best_prec1 = max(ema_acc1, best_prec1) # prec1 = acc1 같은말
+            is_best = acc1 > best_prec1
+            best_prec1 = max(acc1, best_prec1) # prec1 = acc1 같은말
         else:
             is_best = False
 
@@ -264,7 +269,6 @@ def main_worker(gpu, ngpus_per_node, args):
                 'epoch': epoch + 1,
                 'global_step': global_step,
                 'state_dict': model.state_dict(),
-                'ema_state_dict': ema_model.state_dict(),
                 'best_prec1': best_prec1,
                 'optimizer': optimizer.state_dict(),
             }, is_best, checkpoint_path, epoch + 1)
@@ -272,25 +276,25 @@ def main_worker(gpu, ngpus_per_node, args):
     print("총 시간:", datetime.timedelta(seconds=time.time() - total_start_time))
 
 
-def train(train_loader, epoch, model, ema_model, criterion, optimizer, args):
+def train(train_loader, epoch, model, criterion, optimizer, args):
     global global_step
 
     # consistency_type 고르기
-    if args.consistency_type == 'mse': # default 되어있음
-        consistency_criterion = softmax_mes_loss
-    elif args.consistency_type == 'kl':
-        consistency_criterion = softmax_kl_loss
-    else:
-        assert False, args.consistency_type
+    # if args.consistency_type == 'mse': # default 되어있음
+    #    consistency_criterion = softmax_mes_loss
+    # elif args.consistency_type == 'kl':
+    #     consistency_criterion = softmax_kl_loss
+    # else:
+    #     assert False, args.consistency_type
 
     meters = AverageMeterSet()
 
     model.train()
-    ema_model.train()
+    # ema_model.train()
 
     end = time.time()
 
-    for i, ((input, ema_input), target) in enumerate(train_loader):
+    for i, (input, target) in enumerate(train_loader):
         # measure data loading time
         # target: train_loader 자체에서 폴더 수로 class를 분류 해주는 것 같다.(그걸 one-hot vecotr 바꿔줌)
         meters.update('data_time', time.time() - end)
@@ -302,9 +306,9 @@ def train(train_loader, epoch, model, ema_model, criterion, optimizer, args):
         target_var = torch.autograd.Variable(target.cuda(non_blocking=True))
 
         minibatch_size = len(target_var) # 256
-        labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum() # 62: labeled dataset
-        assert labeled_minibatch_size > 0
-        meters.update('labeled_minibatch_size', labeled_minibatch_size)
+        # labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum() # 62: labeled dataset
+        # assert labeled_minibatch_size > 0
+        # meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
         model_out = model(input_var)
 
@@ -312,58 +316,59 @@ def train(train_loader, epoch, model, ema_model, criterion, optimizer, args):
         # criterion: ignore_index = NO_LABEL
         meters.update('class_loss', class_loss.item())
 
-        with torch.no_grad():
-            ema_input_var = torch.autograd.Variable(ema_input).cuda(args.gpu, non_blocking=True)
-            ema_model_out = ema_model(ema_input_var)
+        # with torch.no_grad():
+        #     ema_input_var = torch.autograd.Variable(ema_input).cuda(args.gpu, non_blocking=True)
+        #     ema_model_out = ema_model(ema_input_var)
 
-        ema_logit = ema_model_out
-        ema_logit = torch.autograd.Variable(ema_logit.detach().data, requires_grad=False)
+        # ema_logit = ema_model_out
+        # ema_logit = torch.autograd.Variable(ema_logit.detach().data, requires_grad=False)
 
-        if args.consistency:
-            consistency_weight = get_current_consistency_weight(epoch, args)
-            meters.update('cons_weight', consistency_weight)
-            consistency_loss = consistency_weight * consistency_criterion(model_out, ema_logit) / minibatch_size
-            meters.update('cons_loss', consistency_loss.item())
-        else:
-            consistency_loss = 0
+        # if args.consistency:
+        #     consistency_weight = get_current_consistency_weight(epoch, args)
+        #     meters.update('cons_weight', consistency_weight)
+        #     consistency_loss = consistency_weight * consistency_criterion(model_out, ema_logit) / minibatch_size
+        #     print(consistency_weight)
+        #     meters.update('cons_loss', consistency_loss.item())
+        # else:
+        #     consistency_loss = 0
 
-        loss = class_loss + consistency_loss
+        loss = class_loss
         meters.update('loss', loss.item())
 
         acc1, acc5 = accuracy(model_out.data, target_var.data, topk=(1, 5))
-        meters.update('top1', acc1[0], labeled_minibatch_size)
-        meters.update('error1', 100. - acc1[0], labeled_minibatch_size)
-        meters.update('top5', acc5[0], labeled_minibatch_size)
-        meters.update('error5', 100. - acc5[0], labeled_minibatch_size)
+        meters.update('top1', acc1[0], minibatch_size)
+        meters.update('error1', 100. - acc1[0], minibatch_size)
+        meters.update('top5', acc5[0], minibatch_size)
+        meters.update('error5', 100. - acc5[0], minibatch_size)
 
-        ema_acc1, ema_acc5 = accuracy(ema_logit.data, target_var.data, topk=(1, 5))
-        meters.update('ema_top1', ema_acc1[0], labeled_minibatch_size)
-        meters.update('ema_error1', 100. - ema_acc1[0], labeled_minibatch_size)
-        meters.update('ema_top5', ema_acc5[0], labeled_minibatch_size)
-        meters.update('ema_error5', 100. - ema_acc5[0], labeled_minibatch_size)
+        # ema_acc1, ema_acc5 = accuracy(ema_logit.data, target_var.data, topk=(1, 5))
+        # meters.update('ema_top1', ema_acc1[0], labeled_minibatch_size)
+        # meters.update('ema_error1', 100. - ema_acc1[0], labeled_minibatch_size)
+        # meters.update('ema_top5', ema_acc5[0], labeled_minibatch_size)
+        # meters.update('ema_error5', 100. - ema_acc5[0], labeled_minibatch_size)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         global_step += 1
 
-        update_ema_variables(model, ema_model, args.ema_decay, global_step)
+        # update_ema_variables(model, ema_model, args.ema_decay, global_step)
 
         meters.update('batch_time', time.time() - end)
         end = time.time()
 
         if i % args.print_freq == 0:
-            print("Epoch: [{}][{}/{}]\tClass_loss {meters[class_loss]:.4f}\tConsistency_loss {meters[cons_loss]:.3f}\tacc@1 {meters[top1]:.3f}\tacc@5 {meters[top5]:.3f}".format(epoch, i, len(train_loader), meters=meters))
+            print("Epoch: [{}][{}/{}]\tClass_loss {meters[class_loss]:.4f}\tacc@1 {meters[top1]:.3f}\tacc@5 {meters[top5]:.3f}".format(epoch, i, len(train_loader), meters=meters))
 
 
-def update_ema_variables(model, ema_model, alpha, global_step):
-    alpha = min(1 - 1 / (global_step + 1), alpha)
-    # paper: alpha는 0에서 시간이 지날수록 점점 증가하는 방법(ramp up)
-    # 이러한 방법이 student를 더욱빠르게 초기에 학습
-    for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-        # EMA undata 하는 과정
-        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
-        # Tensor.add_(a,b) ==> Tensor + (a*b)
+# def update_ema_variables(model, ema_model, alpha, global_step):
+#     alpha = min(1 - 1 / (global_step + 1), alpha)
+#     # paper: alpha는 0에서 시간이 지날수록 점점 증가하는 방법(ramp up)
+#     # 이러한 방법이 student를 더욱빠르게 초기에 학습
+#     for ema_param, param in zip(ema_model.parameters(), model.parameters()):
+#         # EMA undata 하는 과정
+#         ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+#         # Tensor.add_(a,b) ==> Tensor + (a*b)
 
 # state: 각종 epoch, global_step, state_dict 등
 # dirpath: checkpoint_path
@@ -426,11 +431,11 @@ def validate(eval_loader, model, criterion, args):
 
             # measure accuracy
             prec1, prec5 = accuracy(output1, target_var.data, topk=(1, 5))
-            meters.update('class_loss', class_loss.item(), labeled_minibatch_size)
-            meters.update('top1', prec1[0], labeled_minibatch_size)
-            meters.update('error1', 100.0 - prec1[0], labeled_minibatch_size)
-            meters.update('top5', prec5[0], labeled_minibatch_size)
-            meters.update('error5', 100.0 - prec5[0], labeled_minibatch_size)
+            meters.update('class_loss', class_loss.item(), minibatch_size)
+            meters.update('top1', prec1[0], minibatch_size)
+            meters.update('error1', 100.0 - prec1[0], minibatch_size)
+            meters.update('top5', prec5[0], minibatch_size)
+            meters.update('error5', 100.0 - prec5[0], minibatch_size)
 
             meters.update('batch_time', time.time() - end)
             end = time.time()
@@ -463,87 +468,5 @@ def accuracy(output, target, topk=(1,)):
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

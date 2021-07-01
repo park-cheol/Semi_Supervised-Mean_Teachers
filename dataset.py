@@ -2,7 +2,6 @@ import itertools
 import os
 import numpy as np
 from PIL import Image
-import matplotlib.pyplot as plt
 from torch.utils.data.sampler import Sampler
 
 NO_LABEL = -1
@@ -88,6 +87,7 @@ def relabel_dataset(dataset, labels):
             del labels[filename]
 
         else:
+            # 원래 label이 씌여져있는데 NO_LABEL로 -1로 바꿔버림
             dataset.imgs[idx] = path, NO_LABEL
             unlabeled_idxs.append(idx)
 
@@ -164,14 +164,6 @@ def grouper(iterable, n):
     # grouper('ABCDEF', 3) --->('A','B','C'), ('D,'E','F')
     args = [iter(iterable)] * n
     return zip(*args)
-
-
-
-
-
-
-
-
 
 
 
