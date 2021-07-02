@@ -23,9 +23,22 @@ https://github.com/iSarmad/MeanTeacher-SNTG-HybridNet
 https://arxiv.org/abs/1706.02677                    
 https://arxiv.org/abs/1608.03983                    
 
-#cifar-10 1000labels[batch256 Labels62 Epoch180]
+# cifar-10 1000labels[batch256 Labels62 Epoch180]
+
 ![best_pth(1000label)](https://user-images.githubusercontent.com/76771847/124141728-9ac55180-dac4-11eb-9bd8-bcfaa083a28c.png)
-#cifar-10 4000labels[batch256 Labels62 Epoch180]
+
+# cifar-10 4000labels[batch256 Labels62 Epoch180]
+
 ![4000labels_adam_best](https://user-images.githubusercontent.com/76771847/124142039-d8c27580-dac4-11eb-8bcb-1457d793073b.png)
-#cifar-10 4000labels[batch256 Labels62 Epoch180 SGD optim]
+
+# cifar-10 4000labels[batch256 Labels62 Epoch180 SGD optim]
+
 ![4000label_best_accuracy](https://user-images.githubusercontent.com/76771847/124142292-10312200-dac5-11eb-9e6a-de716663e5e9.png)
+
+# cifar-10 4000labels[batch256 Epoch180 teachers model 빼고 학습]
+
+![just do i](https://user-images.githubusercontent.com/76771847/124195453-776ec680-db05-11eb-8a34-2e567318f87f.png)
+
+# cifar-10 4000labels[batch256 label32(1:8) Epoch180]
+
+![8:1](https://user-images.githubusercontent.com/76771847/124275412-72e5f480-db7d-11eb-9dda-405587810750.png)

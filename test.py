@@ -1,5 +1,6 @@
 """본 파일은 Supervised data classification 일때 accuracy보기 위함
 즉, model convnet accuracy 측정하기위해서
+또는 Teacher model 배제하고 해봤을 때 차이점 분석
 """
 
 import argparse
@@ -203,23 +204,22 @@ def main_worker(gpu, ngpus_per_node, args):
     eval_dataset = torchvision.datasets.ImageFolder(evaldir, eval_transform)
     test_dataset = torchvision.datasets.ImageFolder(testdir, eval_transform)
 
-    # if args.labels:
-    #    with open(args.labels) as f:
-    #        labels = dict(line.split(' ') for line in f.read().splitlines())
-    #        # labels 분리 label text 확인
-    #    labeled_idxs, unlabeled_idxs = relabel_dataset(train_dataset, labels)
+    if args.labels:
+       with open(args.labels) as f:
+           labels = dict(line.split(' ') for line in f.read().splitlines())
+           # labels 분리 label text 확인
+       labeled_idxs, unlabeled_idxs = relabel_dataset(train_dataset, labels)
 
-    # # if args.labeled_batch_size:
-    #     batch_sampler = TwoStreamBatchSampler(
-    #         unlabeled_idxs, labeled_idxs, args.batch_size, args.labeled_batch_size
-    #     )
+    if args.labeled_batch_size:
+        batch_sampler = TwoStreamBatchSampler(
+            unlabeled_idxs, labeled_idxs, args.batch_size, args.labeled_batch_size
+        )
 
-    # else:
-    #    assert False, "labeled batch size {}".format(args.labeled_batch_size)
+    else:
+       assert False, "labeled batch size {}".format(args.labeled_batch_size)
 
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
+                                               batch_sampler=batch_sampler,
                                                num_workers=args.workers,
                                                pin_memory=True)
 
@@ -306,9 +306,9 @@ def train(train_loader, epoch, model, criterion, optimizer, args):
         target_var = torch.autograd.Variable(target.cuda(non_blocking=True))
 
         minibatch_size = len(target_var) # 256
-        # labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum() # 62: labeled dataset
-        # assert labeled_minibatch_size > 0
-        # meters.update('labeled_minibatch_size', labeled_minibatch_size)
+        labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum() # 62: labeled dataset
+        assert labeled_minibatch_size > 0
+        meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
         model_out = model(input_var)
 

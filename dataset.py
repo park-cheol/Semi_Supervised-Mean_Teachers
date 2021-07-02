@@ -120,12 +120,10 @@ class TwoStreamBatchSampler(Sampler):
         assert len(self.primary_indices) >= self.primary_batch_size > 0
         assert len(self.secondary_indices) >= self.secondary_batch_size > 0
 
-
     def __iter__(self):
 
         primary_iter = iterate_once(self.primary_indices) # unlabeled iteration 마다 한번
         secondary_iter = iterate_eternally(self.secondary_indices) # 계속
-
         return (
             primary_batch + secondary_batch
             for (primary_batch, secondary_batch)
