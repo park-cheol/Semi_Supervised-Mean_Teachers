@@ -66,7 +66,6 @@ class TransformTwice:
         return out1, out2
 
 
-
 # unlabeled data와 labeled data를 나누기
 # dataset: Imagefolder로 불러온 image들
 # labels: dict으로 되어있는 것 {"image idx": "label"} ex) {"16303.jpg": airplane}
@@ -78,7 +77,6 @@ def relabel_dataset(dataset, labels):
         filename = os.path.basename(path)
         # os.path.abspath(path)와 상반: abspath는 절대경로로 home/jun2/....식으로 반환
         # os.path.basename(path): 입력받은 경로의 기본 이름을 반환 즉 "path"만
-
         if filename in labels: # labeling되어 있는 데이터 중에 filename data 여부
             label_idx = dataset.class_to_idx[labels[filename]]
             # class_to_idx : 클래스의 인덱스 반환 e.g. {"airplane": 0...} (.classes 하면 class를 반환)
@@ -92,10 +90,10 @@ def relabel_dataset(dataset, labels):
             unlabeled_idxs.append(idx)
 
     # for 문을 다 돌고 labels의 dict에 아무것도 없어야함 있을 시 에러 처리
-    if len(labels) != 0:
-        message = "List of unlabeled contains {} unknown files: {}, ..."
-        some_missing = ', '.join(list(labels.keys())[:5])
-        raise LookupError(message.format(len(labels), some_missing))
+    # if len(labels) != 0:
+        # message = "List of unlabeled contains {} unknown files: {}, ..."
+        # some_missing = ', '.join(list(labels.keys())[:5])
+        # raise LookupError(message.format(len(labels), some_missing))
 
     labeled_idxs = sorted(set(range(len(dataset.imgs))) - set(unlabeled_idxs))
     # set: 순서가 없고 unique한 값을 가짐 즉 key가 없고 value만 존재

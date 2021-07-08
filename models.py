@@ -50,7 +50,7 @@ class Net(nn.Module):
             self.BN3b = nn.BatchNorm2d(256)
             self.BN3c = nn.BatchNorm2d(128)
 
-            self.BNdense = nn.BatchNorm1d(10)
+            self.BNdense = nn.BatchNorm1d(100)
 
         self.conv1a = nn.Conv2d(3, 128, 3, padding=1)
         self.conv1b = nn.Conv2d(128, 128, 3, padding=1)
@@ -71,7 +71,7 @@ class Net(nn.Module):
         self.drop1 = nn.Dropout(0.5)
         self.drop2 = nn.Dropout(0.5)
 
-        self.dense = nn.Linear(128, 10)
+        self.dense = nn.Linear(128, 100)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -121,6 +121,114 @@ class Net(nn.Module):
             dense = self.dense(reshaped)
 
         return dense # [128, 10]
+
+##################################
+# VGG 16layer
+##################################
+class VGGNet(nn.Module):
+
+    def __init__(self, args, std = 0.15):
+        super(VGGNet, self).__init__()
+        self.args = args
+        self.std = std
+
+        self.gn = GassianNoise(args, shape=(args.batch_size, 3, 128, 128), std=self.std)
+
+        # feature extractor
+        # [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M"]
+        self.conv1_a = nn.Conv2d(3, 64, kernel_size=3, padding=1)
+        self.conv1_b = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+
+        self.conv2_a = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.conv2_b = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+
+        self.conv3_a = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.conv3_b = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.conv3_c = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+
+        self.conv4_a = nn.Conv2d(256, 512, kernel_size=3, padding=1)
+        self.conv4_b = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.conv4_c = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+
+        self.conv5_a = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.conv5_b = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.conv5_c = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+
+        self.bn1_a = nn.BatchNorm2d(64)
+        self.bn1_b = nn.BatchNorm2d(64)
+
+        self.bn2_a = nn.BatchNorm2d(128)
+        self.bn2_b = nn.BatchNorm2d(128)
+
+        self.bn3_a = nn.BatchNorm2d(256)
+        self.bn3_b = nn.BatchNorm2d(256)
+        self.bn3_c = nn.BatchNorm2d(256)
+
+        self.bn4_a = nn.BatchNorm2d(512)
+        self.bn4_b = nn.BatchNorm2d(512)
+        self.bn4_c = nn.BatchNorm2d(512)
+
+        self.bn5_a = nn.BatchNorm2d(512)
+        self.bn5_b = nn.BatchNorm2d(512)
+        self.bn5_c = nn.BatchNorm2d(512)
+
+        self.maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.maxpool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.maxpool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.maxpool5 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        # Pooling
+        self.avgpool = nn.AdaptiveAvgPool2d((7,7))
+        # classifier
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            nn.Dropout(0.2),
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            nn.Dropout(0.2),
+            nn.Linear(4096, 1000)
+        )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels # w * d * h 부피
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+
+    def forward(self, input):
+        conv1_a = F.relu(self.bn1_a(self.conv1_a(input)))
+        conv1_b = F.relu(self.bn1_b(self.conv1_b(conv1_a)))
+        maxpool1 = self.maxpool1(conv1_b)
+
+        conv2_a = F.relu((self.bn2_a(self.conv2_a(maxpool1))))
+        conv2_b = F.relu((self.bn2_b(self.conv2_b(conv2_a))))
+        maxpool2 = self.maxpool2(conv2_b)
+
+        conv3_a = F.relu((self.bn3_a(self.conv3_a(maxpool2))))
+        conv3_b = F.relu((self.bn3_b(self.conv3_b(conv3_a))))
+        conv3_c = F.relu((self.bn3_c(self.conv3_c(conv3_b))))
+        maxpool3 = self.maxpool3(conv3_c)
+
+        conv4_a = F.relu((self.bn4_a(self.conv4_a(maxpool3))))
+        conv4_b = F.relu((self.bn4_b(self.conv4_b(conv4_a))))
+        conv4_c = F.relu((self.bn4_c(self.conv4_c(conv4_b))))
+        maxpool4 = self.maxpool4(conv4_c)
+
+        conv5_a = F.relu((self.bn5_a(self.conv5_a(maxpool4))))
+        conv5_b = F.relu((self.bn5_b(self.conv5_b(conv5_a))))
+        conv5_c = F.relu((self.bn5_c(self.conv5_c(conv5_b))))
+        maxpool5 = self.maxpool5(conv5_c)
+
+        avgpool = self.avgpool(maxpool5)
+
+        reshaped = torch.flatten(avgpool, 1)
+        predict = self.classifier(reshaped)
+
+        return predict
+
+
+
 
 
 

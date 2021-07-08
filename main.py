@@ -33,6 +33,7 @@ from dataset import *
 from models import *
 from losses import *
 from utils import *
+from processing import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=200, metavar='N',
@@ -50,7 +51,7 @@ parser.add_argument("--BN", default=True, type=bool, help="Use Batch Norm")
 # dataset argument
 parser.add_argument("--dataset", type=str, default="cifar10",
                     help="dataset name")
-parser.add_argument("--datadir", type=str, default="data-local/images/cifar10")
+parser.add_argument("--datadir", type=str, default="data-local/images/cifar100")
 parser.add_argument('--train-subdir', type=str, default='train',
                     help='the subdirectory inside the data directory that contains the training data')
 parser.add_argument('--eval-subdir', type=str, default='val',
@@ -200,10 +201,10 @@ def main_worker(gpu, ngpus_per_node, args):
     test_dataset = torchvision.datasets.ImageFolder(testdir, eval_transform)
 
     if args.labels:
-        with open(args.labels) as f:
-            labels = dict(line.split(' ') for line in f.read().splitlines())
-            # labels 분리 label text 확인
-        labeled_idxs, unlabeled_idxs = relabel_dataset(train_dataset, labels)
+         with open(args.labels) as f:
+             labels = dict(line.split(' ') for line in f.read().splitlines())
+             # labels 분리 label text 확인
+         labeled_idxs, unlabeled_idxs = relabel_dataset(train_dataset, labels)
 
     if args.labeled_batch_size:
         batch_sampler = TwoStreamBatchSampler(

@@ -311,6 +311,7 @@ def train(train_loader, epoch, model, criterion, optimizer, args):
         meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
         model_out = model(input_var)
+        print(target_var)
 
         class_loss = criterion(model_out, target_var) / minibatch_size
         # criterion: ignore_index = NO_LABEL
