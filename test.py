@@ -55,7 +55,7 @@ parser.add_argument("--BN", default=True, type=bool, help="Use Batch Norm")
 # dataset argument
 parser.add_argument("--dataset", type=str, default="cifar10",
                     help="dataset name")
-parser.add_argument("--datadir", type=str, default="data-local/images/cifar10")
+parser.add_argument("--datadir", type=str, default="data-local/images/cifar100")
 parser.add_argument('--train-subdir', type=str, default='train',
                     help='the subdirectory inside the data directory that contains the training data')
 parser.add_argument('--eval-subdir', type=str, default='val',
@@ -210,16 +210,17 @@ def main_worker(gpu, ngpus_per_node, args):
            # labels 분리 label text 확인
        labeled_idxs, unlabeled_idxs = relabel_dataset(train_dataset, labels)
 
-    if args.labeled_batch_size:
-        batch_sampler = TwoStreamBatchSampler(
-            unlabeled_idxs, labeled_idxs, args.batch_size, args.labeled_batch_size
-        )
+    #if args.labeled_batch_size:
+    #    batch_sampler = TwoStreamBatchSampler(
+    #        unlabeled_idxs, labeled_idxs, args.batch_size, args.labeled_batch_size
+    #    )
 
-    else:
-       assert False, "labeled batch size {}".format(args.labeled_batch_size)
+    #else:
+    #   assert False, "labeled batch size {}".format(args.labeled_batch_size)
 
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_sampler=batch_sampler,
+                                               batch_size=args.batch_size,
+                                               shuffle=True,
                                                num_workers=args.workers,
                                                pin_memory=True)
 
@@ -307,11 +308,10 @@ def train(train_loader, epoch, model, criterion, optimizer, args):
 
         minibatch_size = len(target_var) # 256
         labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum() # 62: labeled dataset
-        assert labeled_minibatch_size > 0
-        meters.update('labeled_minibatch_size', labeled_minibatch_size)
+        #assert labeled_minibatch_size > 0
+        #meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
         model_out = model(input_var)
-        print(target_var)
 
         class_loss = criterion(model_out, target_var) / minibatch_size
         # criterion: ignore_index = NO_LABEL

@@ -1,10 +1,13 @@
 import math
+import sys
+import itertools
+
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.autograd.variable import Variable
+from torch.autograd import Variable, Function
 
 #################
 # Noise
@@ -132,7 +135,7 @@ class VGGNet(nn.Module):
         self.args = args
         self.std = std
 
-        self.gn = GassianNoise(args, shape=(args.batch_size, 3, 128, 128), std=self.std)
+        self.gn = GassianNoise(args, shape=(args.batch_size, 3, 32, 32), std=self.std)
 
         # feature extractor
         # [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M"]
@@ -178,6 +181,11 @@ class VGGNet(nn.Module):
         self.maxpool4 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.maxpool5 = nn.MaxPool2d(kernel_size=2, stride=2)
 
+        self.drop1 = nn.Dropout(0.5)
+        self.drop2 = nn.Dropout(0.5)
+        self.drop3 = nn.Dropout(0.5)
+        self.drop4 = nn.Dropout(0.5)
+        self.drop5 = nn.Dropout(0.5)
         # Pooling
         self.avgpool = nn.AdaptiveAvgPool2d((7,7))
         # classifier
@@ -188,7 +196,7 @@ class VGGNet(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(True),
             nn.Dropout(0.2),
-            nn.Linear(4096, 1000)
+            nn.Linear(4096, 100)
         )
 
         for m in self.modules():
@@ -197,28 +205,29 @@ class VGGNet(nn.Module):
                 m.weight.data.normal_(0, math.sqrt(2. / n))
 
     def forward(self, input):
+        input = self.gn(input)
         conv1_a = F.relu(self.bn1_a(self.conv1_a(input)))
         conv1_b = F.relu(self.bn1_b(self.conv1_b(conv1_a)))
-        maxpool1 = self.maxpool1(conv1_b)
+        maxpool1 = self.drop1(self.maxpool1(conv1_b))
 
         conv2_a = F.relu((self.bn2_a(self.conv2_a(maxpool1))))
         conv2_b = F.relu((self.bn2_b(self.conv2_b(conv2_a))))
-        maxpool2 = self.maxpool2(conv2_b)
+        maxpool2 = self.drop2(self.maxpool2(conv2_b))
 
         conv3_a = F.relu((self.bn3_a(self.conv3_a(maxpool2))))
         conv3_b = F.relu((self.bn3_b(self.conv3_b(conv3_a))))
         conv3_c = F.relu((self.bn3_c(self.conv3_c(conv3_b))))
-        maxpool3 = self.maxpool3(conv3_c)
+        maxpool3 = self.drop3(self.maxpool3(conv3_c))
 
         conv4_a = F.relu((self.bn4_a(self.conv4_a(maxpool3))))
         conv4_b = F.relu((self.bn4_b(self.conv4_b(conv4_a))))
         conv4_c = F.relu((self.bn4_c(self.conv4_c(conv4_b))))
-        maxpool4 = self.maxpool4(conv4_c)
+        maxpool4 = self.drop4(self.maxpool4(conv4_c))
 
         conv5_a = F.relu((self.bn5_a(self.conv5_a(maxpool4))))
         conv5_b = F.relu((self.bn5_b(self.conv5_b(conv5_a))))
         conv5_c = F.relu((self.bn5_c(self.conv5_c(conv5_b))))
-        maxpool5 = self.maxpool5(conv5_c)
+        maxpool5 = self.drop5(self.maxpool5(conv5_c))
 
         avgpool = self.avgpool(maxpool5)
 
@@ -237,197 +246,178 @@ class VGGNet(nn.Module):
 ###################################
 # RESNET MODEL
 ###################################
-class Bottleneck(nn.Module):
-    expansion = 4
+def conv3x3(in_planes, out_planes, stride=1):
+    "3x3 convolution with padding"
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, bias=False)
 
-    def __init__(self, in_planes, planes, stride=1):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=stride, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, self.expansion *
-                               planes, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(self.expansion*planes)
+class ShakeShakeBlock(nn.Module): # todo
+    @classmethod
+    def out_channels(cls, planes, groups):
+        assert groups == 1
+        return planes
 
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(self.expansion*planes)
-            )
+    def __init__(self, inplanes, planes, groups, stride=1, downsample=None):
+        super().__init__()
+        assert groups == 1
+        self.conv_a1 = conv3x3(inplanes, planes, stride)
+        self.bn_a1 = nn.BatchNorm2d(planes)
+        self.conv_a2 = conv3x3(planes, planes)
+        self.bn_a2 = nn.BatchNorm2d(planes)
+
+        self.conv_b1 = conv3x3(inplanes, planes, stride)
+        self.bn_b1 = nn.BatchNorm2d(planes)
+        self.conv_b2 = conv3x3(planes, planes)
+        self.bn_b2 = nn.BatchNorm2d(planes)
+
+        self.downsample = downsample
+        self.stride = stride
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
-        out = self.bn3(self.conv3(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
-        return out
+        a, b, residual = x, x, x
+
+        a = F.relu(a, inplace=False)
+        a = self.conv_a1(a)
+        a = self.bn_a1(a)
+        a = F.relu(a, inplace=True)
+        a = self.conv_a2(a)
+        a = self.bn_a2(a)
+
+        b = F.relu(b, inplace=False)
+        b = self.conv_b1(b)
+        b = self.bn_b1(b)
+        b = F.relu(b, inplace=True)
+        b = self.conv_b2(b)
+        b = self.bn_b2(b)
+
+        ab = shake(a, b, training=self.training)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        return residual + ab
 
 
-class ResNet(nn.Module):
-    def __init__(self, args, block, num_blocks, num_classes=10, std = 0.15):
-        super(ResNet, self).__init__()
-        self.in_planes = 64
-        self.std = std
-        self.args = args
+class Shake(Function):
+    @classmethod
+    def forward(cls, ctx, inp1, inp2, training):
+        assert inp1.size() == inp2.size()
+        gate_size = [inp1.size()[0], *itertools.repeat(1, inp1.dim() - 1)]
+        gate = inp1.new(*gate_size)
+        if training:
+            gate.uniform_(0, 1)
+        else:
+            gate.fill_(0.5)
+        return inp1 * gate + inp2 * (1. - gate)
 
-        self.drop1 = nn.Dropout(0.5)
-        self.drop2 = nn.Dropout(0.5)
+    @classmethod
+    def backward(cls, ctx, grad_output):
+        grad_inp1 = grad_inp2 = grad_training = None
+        gate_size = [grad_output.size()[0], *itertools.repeat(1,
+                                                              grad_output.dim() - 1)]
+        gate = Variable(grad_output.data.new(*gate_size).uniform_(0, 1))
+        if ctx.needs_input_grad[0]:
+            grad_inp1 = grad_output * gate
+        if ctx.needs_input_grad[1]:
+            grad_inp2 = grad_output * (1 - gate)
+        assert not ctx.needs_input_grad[2]
+        return grad_inp1, grad_inp2, grad_training
 
-        self.gn = GassianNoise(args, shape=(args.batch_size, 3, 32, 32), std=self.std)
 
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3,
-                               stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, num_classes)
+def shake(inp1, inp2, training=False):
+    return Shake.apply(inp1, inp2, training)
 
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
+# todo
+class ShiftConvDownsample(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.relu = nn.ReLU(inplace=True)
+        self.conv = nn.Conv2d(in_channels=2 * in_channels,
+                              out_channels=out_channels,
+                              kernel_size=1,
+                              groups=2)
+        self.bn = nn.BatchNorm2d(out_channels)
+
+    def forward(self, x):
+        x = torch.cat((x[:, :, 0::2, 0::2],
+                       x[:, :, 1::2, 1::2]), dim=1)
+        x = self.relu(x)
+        x = self.conv(x)
+        x = self.bn(x)
+        return x
+
+
+
+class ResNet32x32(nn.Module):
+    def __init__(self, args ,block, layers, channels, groups=1, num_classes=100, downsample='basic'):
+        super().__init__()
+        assert len(layers) == 3
+        self.agrs = args
+
+        self.gn = GassianNoise(args, shape=(args.batch_size, 3, 32, 32), std=0.15)
+
+        self.downsample_mode = downsample
+        self.inplanes = 16
+
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1,
+                               padding=1, bias=False)
+
+        self.layer1 = self._make_layer(block, channels, groups, layers[0])
+        self.layer2 = self._make_layer(
+            block, channels * 2, groups, layers[1], stride=2)
+        self.layer3 = self._make_layer(
+            block, channels * 4, groups, layers[2], stride=2)
+
+        self.avgpool = nn.AvgPool2d(8)
+
+        self.fc1 = nn.Linear(block.out_channels(
+            channels * 4, groups), num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def _make_layer(self, block, planes, groups, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != block.out_channels(planes, groups):
+
+            if self.downsample_mode == 'basic' or stride == 1:
+                downsample = nn.Sequential(
+                    nn.Conv2d(self.inplanes, block.out_channels(planes, groups),
+                              kernel_size=1, stride=stride, bias=False),
+                    nn.BatchNorm2d(block.out_channels(planes, groups)),
+                )
+
+            elif self.downsample_mode == 'shift_conv':
+                downsample = ShiftConvDownsample(in_channels=self.inplanes,
+                                                 out_channels=block.out_channels(planes, groups))
+
+            else:
+                assert False
+
         layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
+        layers.append(block(self.inplanes, planes, groups, stride, downsample))
+
+        self.inplanes = block.out_channels(planes, groups)
+
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes, groups))
+
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        if self.training:  # todo self.training을 지정?
-            x = self.gn(x)
-        conv_bn1_relu = F.relu(self.bn1(self.conv1(x)))
-        layer1 = self.layer1(conv_bn1_relu)
-        layer2 = self.layer2(layer1)
-        layer3 = self.layer3(layer2)
-        layer4 = self.layer4(layer3)
-        avg_pool2d = F.avg_pool2d(layer4, 4)
-        reshaped = avg_pool2d.view(avg_pool2d.size(0), -1)
-        out = self.linear(reshaped)
-        return out
 
-
-
-
-
-
-
-
-###################################
-# RESNET Model (무기한 폐쇠)
-###################################
-""" 작동이 정상적이지 못함 X"""
-# class BottleneckBlock(nn.Module):
-#     @classmethod
-#     def out_channels(cls, channels, groups): # todo out_channels?
-#         if groups > 1:
-#             return 2 * channels
-#         else:
-#             return 4 * channels
-#
-#     def __init__(self, in_channels, out_channels, groups, stride=1, downsample=None):
-#         super(BottleneckBlock, self).__init__()
-#         self.relu = nn.ReLU(inplace=True)
-#         self.downsample = downsample
-#         self.stride = stride
-#
-#         self.conv_1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
-#         self.bn_1 = nn.BatchNorm2d(out_channels)
-#
-#         self.conv_2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False, groups=groups)
-#         self.bn_2 = nn.BatchNorm2d(out_channels)
-#
-#         self.conv_3 = nn.Conv2d(out_channels, self.out_channels(out_channels, groups), kernel_size=1, bias=False)
-#         self.bn_3 = nn.BatchNorm2d(self.out_channels(out_channels, groups))
-#
-#     def forward(self, input):
-#         conv_1 = self.conv_1(input)
-#         bn_1 = self.bn_1(conv_1)
-#         relu_1 = self.relu(bn_1)
-#
-#         conv_2 = self.conv_2(relu_1)
-#         bn_2 = self.bn_2(conv_2)
-#         relu_2 = self.relu(bn_2)
-#
-#         conv_3 = self.conv_3(relu_2)
-#         bn_3 = self.bn_3(conv_3)
-#
-#         if self.downsample is not None:
-#             input = self.downsample(input)
-#
-#         return self.relu(input + bn_3)
-#
-# # LAYERS[4, 4, 4] , channels=96, downsample='basic', **kwargs)
-# class ResNet(nn.Module):
-#
-#     def __init__(self, block, layers, channels, groups=1, num_classes=10, downsample='basic'):
-#         super(ResNet, self).__init__()
-#         assert len(layers) == 3
-#         self.downsample_mode = downsample
-#         self.in_channels = 16
-#
-#         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
-#
-#         self.layer1 = self._make_layer(block, channels, groups, layers[0])
-#         self.layer2 = self._make_layer(block, channels * 2, groups, layers[1], stride=2)
-#         self.layer3 = self._make_layer(block, channels * 4, groups, layers[2], stride=2)
-#
-#         self.avgpool = nn.AvgPool2d(8) # todo out_channels 어떻게 찍히는가
-#         self.fc1 = nn.Linear(block.out_channels(channels * 4, groups), num_classes)
-#
-#         for m in self.modules():
-#             if isinstance(m, nn.Conv2d):
-#                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-#                 m.weight.data.normal_(0, math.sqrt(2. / n))
-#             elif isinstance(m, nn.BatchNorm2d):
-#                 m.weight.data.fill_(1)
-#                 m.bias.data.zero_()
-#
-#     def _make_layer(self, block, out_channels, groups, blocks, stride=1):
-#         if stride != 1 or self.in_channels != block.out_channels(out_channels, groups):
-#             downsample = nn.Sequential(
-#                 nn.Conv2d(self.in_channels, block.out_channels(out_channels, groups), kernel_size=1, stride=stride, bias=False),
-#                 nn.BatchNorm2d(block.out_channels(out_channels, groups))
-#             )
-#
-#         else:
-#             assert False
-#
-#         layers = []
-#         layers.append(block(self.in_channels, out_channels, groups, stride, downsample))
-#         self.in_channels = block.out_channels(out_channels, groups)
-#
-#         for i in range(1, blocks):
-#             layers.append(block(self.in_channels, out_channels, groups))
-#
-#         return nn.Sequential(*layers)
-#
-#     def forward(self, input):
-#         conv1 = self.conv1(input)
-#         layer1 = self.layer1(conv1)
-#         layer2 = self.layer2(layer1)
-#         layer3 = self.layer3(layer2)
-#         avgpool = self.avgpool(layer3)
-#         reshaped = avgpool.view(input.size(0), -1)
-#         output = self.fc1(reshaped)
-#
-#         return output
-
-
-
-
-
-
-
-
-
-
-
-
+        x = self.conv1(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        return self.fc1(x)
 
 
 

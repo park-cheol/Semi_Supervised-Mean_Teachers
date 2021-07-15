@@ -122,6 +122,7 @@ class TwoStreamBatchSampler(Sampler):
 
         primary_iter = iterate_once(self.primary_indices) # unlabeled iteration 마다 한번
         secondary_iter = iterate_eternally(self.secondary_indices) # 계속
+
         return (
             primary_batch + secondary_batch
             for (primary_batch, secondary_batch)

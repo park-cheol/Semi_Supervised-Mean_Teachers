@@ -128,10 +128,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     checkpoint_path = "saved_models/{}".format(args.dataset)
 
-    model = Net(args)
-    ema_model = Net(args)
-    # model = ResNet(Bottleneck, [3, 4, 6, 3])
-    # ema_model = ResNet(Bottleneck, [3, 4, 6, 3])
+    # model = VGGNet(args)
+    # ema_model = VGGNet(args)
+    model = ResNet32x32(args, ShakeShakeBlock, layers=[4, 4, 4], channels=96, downsample='shift_conv')
+    ema_model = ResNet32x32(args, ShakeShakeBlock, layers=[4, 4, 4], channels=96, downsample='shift_conv')
 
 
     # teachers model은 학습하는게 아니라 student model에서 weight를 ema해줌
@@ -292,6 +292,7 @@ def train(train_loader, epoch, model, ema_model, criterion, optimizer, args):
     end = time.time()
 
     for i, ((input, ema_input), target) in enumerate(train_loader):
+
         # measure data loading time
         # target: train_loader 자체에서 폴더 수로 class를 분류 해주는 것 같다.(그걸 one-hot vecotr 바꿔줌)
         meters.update('data_time', time.time() - end)
